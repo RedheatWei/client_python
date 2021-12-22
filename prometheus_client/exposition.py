@@ -111,7 +111,7 @@ def make_wsgi_app(registry=REGISTRY):
 class _SilentHandler(WSGIRequestHandler):
     """WSGI handler that does not log requests."""
 
-    def log_message(self, format, *args):
+    #def log_message(self, format, *args):
         """Log nothing."""
 
 
