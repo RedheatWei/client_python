@@ -6,6 +6,7 @@ import socket
 from socketserver import ThreadingMixIn
 import sys
 import threading
+import logging
 from urllib.error import HTTPError
 from urllib.parse import parse_qs, quote_plus, urlparse
 from urllib.request import (
@@ -16,6 +17,8 @@ from wsgiref.simple_server import make_server, WSGIRequestHandler, WSGIServer
 from .openmetrics import exposition as openmetrics
 from .registry import REGISTRY
 from .utils import floatToGoString
+
+logger = logging.getLogger(__name__)
 
 CONTENT_TYPE_LATEST = 'text/plain; version=0.0.4; charset=utf-8'
 """Content type of the latest text format"""
@@ -111,8 +114,9 @@ def make_wsgi_app(registry=REGISTRY):
 class _SilentHandler(WSGIRequestHandler):
     """WSGI handler that does not log requests."""
 
-    #def log_message(self, format, *args):
+    def log_message(self, format, *args):
         """Log nothing."""
+        logger.info(format % args)
 
 
 class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
@@ -250,7 +254,7 @@ def write_to_textfile(path, registry):
     tmppath = f'{path}.{os.getpid()}.{threading.current_thread().ident}'
     with open(tmppath, 'wb') as f:
         f.write(generate_latest(registry))
-    
+
     # rename(2) is atomic but fails on Windows if the destination file exists
     if os.name == 'nt':
         os.replace(tmppath, path)
@@ -259,7 +263,6 @@ def write_to_textfile(path, registry):
 
 
 def _make_handler(url, method, timeout, headers, data, base_handler):
-
     def handle():
         request = Request(url, data=data)
         request.get_method = lambda: method
