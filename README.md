@@ -2,6 +2,9 @@
 
 The official Python client for [Prometheus](https://prometheus.io).
 
+#### 仅在官方基础上增加了日志
+
+
 ## Three Step Demo
 
 **One**: Install the client:
