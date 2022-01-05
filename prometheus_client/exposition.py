@@ -13,7 +13,7 @@ from urllib.request import (
     build_opener, HTTPHandler, HTTPRedirectHandler, Request,
 )
 from wsgiref.simple_server import make_server, WSGIRequestHandler, WSGIServer
-
+from datetime import datetime
 from .openmetrics import exposition as openmetrics
 from .registry import REGISTRY
 from .utils import floatToGoString
@@ -82,10 +82,14 @@ class _PrometheusRedirectHandler(HTTPRedirectHandler):
 
 def _bake_output(registry, accept_header, params):
     """Bake output for metrics output."""
+    logger.warning("{} start choose encoder".format(get_time()))
     encoder, content_type = choose_encoder(accept_header)
+    logger.warning("{} choose encoder done".format(get_time()))
     if 'name[]' in params:
         registry = registry.restricted_registry(params['name[]'])
+    logger.warning("{} start encoder".format(get_time()))
     output = encoder(registry)
+    logger.warning("{} encoder done".format(get_time()))
     return '200 OK', ('Content-Type', content_type), output
 
 
@@ -94,6 +98,7 @@ def make_wsgi_app(registry=REGISTRY):
 
     def prometheus_app(environ, start_response):
         # Prepare parameters
+        logger.warning("{} get request".format(get_time()))
         accept_header = environ.get('HTTP_ACCEPT')
         params = parse_qs(environ.get('QUERY_STRING', ''))
         if environ['PATH_INFO'] == '/favicon.ico':
@@ -103,12 +108,19 @@ def make_wsgi_app(registry=REGISTRY):
             output = b''
         else:
             # Bake output
+            logger.warning("{} ready to bake output".format(get_time()))
             status, header, output = _bake_output(registry, accept_header, params)
+            logger.warning("{}  bake output done".format(get_time()))
         # Return output
+        logger.warning("{}  start response".format(get_time()))
         start_response(status, [header])
+        logger.warning("{}  response done".format(get_time()))
         return [output]
 
     return prometheus_app
+
+def get_time():
+    return datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
 
 
 class _SilentHandler(WSGIRequestHandler):
@@ -116,7 +128,7 @@ class _SilentHandler(WSGIRequestHandler):
 
     def log_message(self, format, *args):
         """Log nothing."""
-        logger.info(format % args)
+        logger.warning("{} {}:{} {} {} {}".format(get_time(),*self.client_address,*args))
 
 
 class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
